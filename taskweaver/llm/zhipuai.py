@@ -137,7 +137,7 @@ class ZhipuAIService(CompletionService, EmbeddingService):
                                 "arguments": json.loads(t.function.arguments),
                             }
                             for t in zhipuai_response.tool_calls
-                        ],
+                        ], ensure_ascii=False
                     )
                 yield response
         except Exception as e:

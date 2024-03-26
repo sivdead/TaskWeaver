@@ -198,7 +198,7 @@ class OpenAIService(CompletionService, EmbeddingService):
                                 "arguments": json.loads(t.function.arguments),
                             }
                             for t in oai_response.tool_calls
-                        ],
+                        ], ensure_ascii=False
                     )
                 yield response
 

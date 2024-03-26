@@ -1,3 +1,4 @@
+import logging
 import types
 from typing import Any, Callable, Generator, List, Optional, Type
 
@@ -141,6 +142,7 @@ class LLMApi(object):
                 )
         else:
             completion_service = self.completion_service
+        logging.info(f"调用chatCompletion,request messages:{messages}")
         for msg_chunk in completion_service.chat_completion(
             messages,
             stream,
@@ -154,6 +156,7 @@ class LLMApi(object):
             msg["content"] += msg_chunk["content"]
             if "name" in msg_chunk:
                 msg["name"] = msg_chunk["name"]
+        logging.info(f"调用chatCompletion,response message:{msg}")
         return msg
 
     def chat_completion_stream(
@@ -188,6 +191,7 @@ class LLMApi(object):
                 **kwargs,
             )
 
+        logging.info(f"调用chatCompletion,request messages:{messages}")
         if use_smoother:
             return self._stream_smoother(get_generator)
         return get_generator()

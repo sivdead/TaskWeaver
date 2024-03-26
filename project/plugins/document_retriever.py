@@ -45,7 +45,7 @@ class DocumentRetriever(Plugin):
         expanded_chunks = self.do_expand(result, target_length)
 
         return f"DocumentRetriever has done searching for `{query}`.\n" + self.ctx.wrap_text_with_delimiter_temporal(
-            "\n```json\n" + json.dumps(expanded_chunks, indent=4) + "```\n",
+            "\n```json\n" + json.dumps(expanded_chunks, ensure_ascii=False, indent=4) + "```\n",
         )
 
     def do_expand(self, result, target_length):
