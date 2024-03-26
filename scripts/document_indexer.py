@@ -194,9 +194,9 @@ def text_parser(
             return title, ""
 
         if isinstance(data, dict):
-            text = json.dumps(data)
+            text = json.dumps(data, ensure_ascii=False)
         elif isinstance(data, list):
-            content_list = [json.dumps(each_json) for each_json in data]
+            content_list = [json.dumps(each_json, ensure_ascii=False) for each_json in data]
             text = "\n".join(content_list)
             title = filename
     elif extension in other_extensions:

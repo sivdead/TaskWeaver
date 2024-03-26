@@ -7,8 +7,11 @@ WORKDIR /app
 # Copy the requrements file
 COPY requirements.txt /app/requirements.txt
 
+RUN pip config set global.index-url https://mirrors.cloud.tencent.com/pypi/simple
+
 # Install any necessary dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir openpyxl
 
 # Install additional dependencies below for the plugins
 # e.g., RUN pip install your-package-name

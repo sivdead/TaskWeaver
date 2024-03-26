@@ -19,7 +19,7 @@ from taskweaver.app.app import TaskWeaverApp
 
 def format_output(response_obj: Any) -> str:
     assert hasattr(response_obj, "to_dict"), "to_dict method is not found"
-    formatted_output = json.dumps(response_obj.to_dict())
+    formatted_output = json.dumps(response_obj.to_dict(), ensure_ascii=False)
     return formatted_output
 
 

@@ -82,11 +82,12 @@ class WebSearch(Plugin):
 
         if not browse:
             return f"WebSearch has done searching for `{queries}`.\n" + self.ctx.wrap_text_with_delimiter_temporal(
-                "\n```json\n" + json.dumps(query_results, indent=4) + "```\n",
+                "\n```json\n" + json.dumps(query_results, indent=4, ensure_ascii=False) + "```\n",
             )
         else:
             return f"WebSearch has done searching for `{queries}`.\n" + self.ctx.wrap_text_with_delimiter_temporal(
-                "\n```json\n" + json.dumps(browse_page(",".join(queries), list(query_urls)), indent=4) + "```\n",
+                "\n```json\n" + json.dumps(browse_page(",".join(queries), list(query_urls)), indent=4,
+                                           ensure_ascii=False) + "```\n",
             )
 
     def _search_google_custom_search(self, query: str, cnt: int) -> List[ResponseEntry]:

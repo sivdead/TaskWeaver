@@ -58,6 +58,7 @@ class SubProcessManager(Manager):
         env_id: Optional[str] = None,
         env_dir: Optional[str] = None,
         kernel_mode: Optional[Literal["local", "container"]] = "local",
+        container_network: Optional[str] = None,
     ) -> None:
         env_id = env_id or os.getenv("TASKWEAVER_ENV_ID", "local")
         env_dir = env_dir or os.getenv(
@@ -76,6 +77,7 @@ class SubProcessManager(Manager):
             env_id,
             env_dir,
             env_mode=env_mode,
+            container_network=container_network
         )
 
     def initialize(self) -> None:

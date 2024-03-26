@@ -119,7 +119,7 @@ class ExperienceGenerator:
         system_instruction = prompt if prompt else self.default_prompt_template
         prompt = [
             format_chat_message("system", system_instruction),
-            format_chat_message("user", json.dumps(conversation)),
+            format_chat_message("user", json.dumps(conversation, ensure_ascii=False)),
         ]
         self.tracing.set_span_attribute("prompt", json.dumps(prompt, indent=2))
         prompt_size = self.tracing.count_tokens(json.dumps(prompt))

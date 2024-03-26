@@ -8,6 +8,7 @@ from ast import literal_eval
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Optional, Union
 
+from docker.types import Ulimit
 from jupyter_client import BlockingKernelClient
 from jupyter_client.kernelspec import KernelSpec, KernelSpecManager
 from jupyter_client.manager import KernelManager
@@ -133,6 +134,7 @@ class Environment:
         env_dir: Optional[str] = None,
         env_mode: Optional[EnvMode] = EnvMode.Local,
         port_start_inside_container: Optional[int] = 12345,
+            container_network: Optional[str] = None,
     ) -> None:
         self.session_dict: Dict[str, EnvSession] = {}
         self.id = get_id(prefix="env") if env_id is None else env_id
@@ -166,6 +168,7 @@ class Environment:
 
             self.session_container_dict: Dict[str, str] = {}
             self.port_start_inside_container = port_start_inside_container
+            self.container_network = container_network
         else:
             raise ValueError(f"Unsupported environment mode {env_mode}")
         logger.info(f"Environment {self.id} is created.")
@@ -248,6 +251,8 @@ class Environment:
                 "TASKWEAVER_ENV_DIR": "/app",
                 "TASKWEAVER_PORT_START": str(new_port_start),
             }
+            # 设置ulimit到最大
+            ulimits = [Ulimit(name="nofile", soft=65536, hard=65536)]
             # ports will be assigned automatically at the host
             container = self.docker_client.containers.run(
                 image="taskweaver/executor",
@@ -256,6 +261,8 @@ class Environment:
                 volumes={
                     os.path.abspath(session.session_dir): {"bind": f"/app/sessions/{session_id}", "mode": "rw"},
                 },
+                ulimits=ulimits,
+                network=self.container_network,
                 ports={
                     f"{new_port_start}/tcp": None,
                     f"{new_port_start + 1}/tcp": None,
@@ -277,12 +284,23 @@ class Environment:
                 raise Exception("Container is not ready after 10 seconds")
 
             # save the ports to ces session dir
-            port_bindings = container.attrs["NetworkSettings"]["Ports"]
-            shell_port = int(port_bindings[f"{new_port_start}/tcp"][0]["HostPort"])
-            iopub_port = int(port_bindings[f"{new_port_start + 1}/tcp"][0]["HostPort"])
-            stdin_port = int(port_bindings[f"{new_port_start + 2}/tcp"][0]["HostPort"])
-            hb_port = int(port_bindings[f"{new_port_start + 3}/tcp"][0]["HostPort"])
-            control_port = int(port_bindings[f"{new_port_start + 4}/tcp"][0]["HostPort"])
+            if self.container_network and self.container_network != "host":
+                kernel_host = container.attrs["NetworkSettings"]["Networks"][self.container_network][
+                    "IPAddress"]
+                # ports should use original port
+                shell_port = new_port_start
+                iopub_port = new_port_start + 1
+                stdin_port = new_port_start + 2
+                hb_port = new_port_start + 3
+                control_port = new_port_start + 4
+            else:
+                kernel_host = "127.0.0.1"
+                port_bindings = container.attrs["NetworkSettings"]["Ports"]
+                shell_port = int(port_bindings[f"{new_port_start}/tcp"][0]["HostPort"])
+                iopub_port = int(port_bindings[f"{new_port_start + 1}/tcp"][0]["HostPort"])
+                stdin_port = int(port_bindings[f"{new_port_start + 2}/tcp"][0]["HostPort"])
+                hb_port = int(port_bindings[f"{new_port_start + 3}/tcp"][0]["HostPort"])
+                control_port = int(port_bindings[f"{new_port_start + 4}/tcp"][0]["HostPort"])
             with open(os.path.join(ces_session_dir, "ports.json"), "w") as f:
                 f.write(
                     json.dumps(
@@ -292,6 +310,7 @@ class Environment:
                             "stdin_port": stdin_port,
                             "hb_port": hb_port,
                             "control_port": control_port,
+                            "kernel_host": kernel_host,
                         },
                     ),
                 )
@@ -300,6 +319,7 @@ class Environment:
             session.kernel_id = new_kernel_id
             self._cmd_session_init(session)
             session.kernel_status = "ready"
+            session.kernel_host = container.name if self.container_network else "127.0.0.1"
         elif self.mode == EnvMode.InsideContainer:
             assert port_start_inside_container is not None, "Port start must be provided when inside container."
             assert kernel_id_inside_container is not None, "Kernel id must be provided when inside container."
@@ -524,8 +544,8 @@ class Environment:
         client.load_connection_file()
         # overwrite the ip and ports if outside container
         if self.mode == EnvMode.OutsideContainer:
-            client.ip = "127.0.0.1"
             ports = self._get_session_ports(session_id)
+            client.ip = ports["kernel_host"]
             client.shell_port = ports["shell_port"]
             client.stdin_port = ports["stdin_port"]
             client.hb_port = ports["hb_port"]
@@ -558,7 +578,7 @@ class Environment:
             while True:
                 message = kc.get_iopub_msg(timeout=180)
 
-                logger.debug(json.dumps(message, indent=2, default=str))
+                logger.debug(json.dumps(message, indent=2, default=str, ensure_ascii=False))
 
                 assert message["parent_header"]["msg_id"] == result_msg_id
                 msg_type = message["msg_type"]
@@ -612,7 +632,7 @@ class Environment:
     def _update_session_var(self, session: EnvSession) -> None:
         self._execute_control_code_on_kernel(
             session.session_id,
-            f"%%_taskweaver_update_session_var\n{json.dumps(session.session_var)}",
+            f"%%_taskweaver_update_session_var\n{json.dumps(session.session_var, ensure_ascii=False)}",
         )
 
     def _cmd_session_init(self, session: EnvSession) -> None:
@@ -628,7 +648,7 @@ class Environment:
         )
         self._execute_control_code_on_kernel(
             session.session_id,
-            f"%%_taskweaver_plugin_load {plugin.name}\n{json.dumps(plugin.config or {})}",
+            f"%%_taskweaver_plugin_load {plugin.name}\n{json.dumps(plugin.config or {}, ensure_ascii=False)}",
         )
 
     def _cmd_plugin_test(self, session: EnvSession, plugin: EnvPlugin) -> None:
