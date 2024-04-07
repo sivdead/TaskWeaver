@@ -23,6 +23,10 @@ class ExecutionServiceConfig(ModuleConfig):
             "container_network",
             "taskweaver",
         )
+        self.container_network = self._get_str(
+            "container_network",
+            "taskweaver",
+        )
         if self.kernel_mode == "local":
             print(
                 "TaskWeaver is running in the `local` mode. This implies that "

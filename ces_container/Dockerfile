@@ -7,6 +7,8 @@ WORKDIR /app
 # Copy the requrements file
 COPY requirements.txt /app/requirements.txt
 
+RUN pip config set global.index-url https://mirrors.cloud.tencent.com/pypi/simple
+
 # Install any necessary dependencies
 RUN pip config set global.index-url https://mirrors.cloud.tencent.com/pypi/simple
 RUN pip install --no-cache-dir -r requirements.txt
